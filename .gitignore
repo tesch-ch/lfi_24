@@ -1,3 +1,12 @@
+# Project specific ignores
+
+# Google Drive temporary files (for colab)
+.tmp.driveupload
+data/raw/
+data/dataset/
+data/dataset.zip
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
