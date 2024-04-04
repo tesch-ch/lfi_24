@@ -38,6 +38,26 @@
 - UCF contains some notion of ethnicity (would allow for checking if PoC are included in data...)
 - with face object detection find faces in dataset and crop...
 - model trained only on genki...
+- Data augmentation
+  - Standard data augmentation techniques for training on ImageNet include random cropping, horizontal flipping, and color jittering. The images are also resized to 224x224 pixels after augmentation.
+  - But, images are goofy anyways, so might not need be super important
+  - e.g. (torchvision transforms):
+    ```python
+    train_transforms = transforms.Compose([
+        transforms.Resize((224,224)),
+        transforms.RandomAffine(degrees=15, translate=(0.1,0.1), scale=(0.8,1.2), shear=5),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        normalize])
+    test_transforms = transforms.Compose([
+        transforms.Resize((224,224)),
+        transforms.ToTensor(),
+        normalize])
+    ```
+- A big advantage of cosine is that there are no hyper-parameters to optimize, which cuts down our search space. (https://pytorch.org/blog/how-to-train-state-of-the-art-models-using-torchvision-latest-primitives/)
+- Choose two output neurons for better comparison between model's probabilities (softmax, cross entropy loss...)
+- One vs two output neurons
+- RayTune in the future...
 
 # old readme
 ## Datasets
