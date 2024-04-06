@@ -14,6 +14,7 @@ Models are trained from within a notebook running on Google Colab.
       - with some stuff maybe?
     - fine1: model frozen, one fc with depth 2
     - fine2: model frozen, one fc with depth 2 and layer before fc unfrozen
+  - Two output neurons allow for easy label smoothing in cross entropy loss function
 - YOLOv8 
 - No extensive HPO for saving resources...
 - Image augmentation
@@ -24,12 +25,13 @@ Models are trained from within a notebook running on Google Colab.
 - epochs=100
 - opt=sgd
 - momentum=0.9
-- lr=0.5
+- lr=0.01
 
 ### Optimizations
 - learning rate tuning?
 - add early stopping
 - learning rate scheduler
+- in cross entropy loss label smoothing
 
 ### stuff you could implement
 - checkpointing mechanisms

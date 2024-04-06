@@ -27,15 +27,27 @@ class ModelBaseline(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-
-def train_eval_model(model_name, data_dir,
-                     batch_size, epochs, lr, momentum,
-                     n_data_workers=4, pin_memory=True,
-                     cuda_force=False,
+# influenced by https://github.com/pytorch/vision/blob/main/references/classification/train.py
+def train_eval_model(model_name: str,
+                     data_dir: str,
+                     batch_size: int,
+                     epochs: int,
+                     lr: float,
+                     momentum: float,
+                     weight_decay: float=0.0,
+                     useCosineAnnealingLR: bool=False,
+                     warmup_epochs: int=0,
+                     warmup_lr_decay: float=0.0,
+                     label_smoothing: float=0.0,
+                     n_data_workers: int=4,
+                     pin_memory: bool=True,
+                     cuda_force: bool=False,
                      log: list|None=None,
-                     wandb_id=None, wandb_project="LfI24",
-                     safe_model=False, safe_model_file=""):
-    # TODO: time, extern model classes for load with state dict
+                     wandb_id: str|None=None,
+                     wandb_project: str="LfI24",
+                     safe_model: bool=False,
+                     safe_model_file: str=""):
+
     # Store parameters for logging
     params = {
     "model_name": model_name,
@@ -44,6 +56,11 @@ def train_eval_model(model_name, data_dir,
     "epochs": epochs,
     "lr": lr,
     "momentum": momentum,
+    "weight_decay": weight_decay,
+    "useCosineAnnealingLR": useCosineAnnealingLR,
+    "warmup_epochs": warmup_epochs,
+    "warmup_lr_decay": warmup_lr_decay,
+    "label_smoothing": label_smoothing,
     "n_data_workers": n_data_workers,
     "pin_memory": pin_memory,
     "cuda_force": cuda_force,
@@ -84,25 +101,61 @@ def train_eval_model(model_name, data_dir,
     if model_name == "baseline":
         model = ModelBaseline()
         model = model.to(device)
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
     else:
         raise NotImplementedError(f"Model {model_name} not implemented.")
+
+    # label_smoothing = 0.0 means no smoothing
+    criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum,
+                          weight_decay=weight_decay)
+    
+    # Learning rate scheduler for main training
+    if useCosineAnnealingLR:
+        scheduler_main_lr = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=epochs-warmup_epochs, eta_min=0.0)
+    else:
+        # Constant scheduler to mimic the behavior of not using a scheduler
+        scheduler_main_lr = torch.optim.lr_scheduler.ConstantLR(
+            optimizer, factor=1.0, total_iters=epochs-warmup_epochs)
+
+    # Learning rate scheduler for warmup
+    if warmup_epochs > 0:
+        scheduler_warmup = torch.optim.lr_scheduler.LinearLR(
+                optimizer, start_factor=warmup_lr_decay, total_iters=warmup_epochs)
+        # In order to not manually keep track of warmup and main training,
+        # I'll use SequentialILR. It will take care of scheduler switching
+        # automatically.
+        scheduler = torch.optim.lr_scheduler.SequentialILR(
+                optimizer, schedulers=[scheduler_warmup, scheduler_main_lr],
+                milestones=[warmup_epochs])
+    else:
+        scheduler = scheduler_main_lr
+
 
     # Weights and Biases (wandb) setup
     if wandb_id is not None:
         import wandb
+        # This is simply one log message to the wandb dashboard, nothing is
+        # happening about the actual training.
         wandb.init(project=wandb_project,
                    id=wandb_id,
                    resume="must",
                    config={"model_name": model_name,
+                           "data_dir": data_dir,
                            "batch_size": batch_size,
                            "epochs": epochs,
                            "lr": lr,
                            "momentum": momentum,
+                           "weight_decay": weight_decay,
+                           "useCosineAnnealingLR": useCosineAnnealingLR,
+                           "warmup_epochs": warmup_epochs,
+                           "warmup_lr_decay": warmup_lr_decay,
+                           "label_smoothing": label_smoothing,
                            "n_data_workers": n_data_workers,
                            "pin_memory": pin_memory,
-                           "cuda_force": cuda_force})
+                           "cuda_force": cuda_force,
+                           "saved_model": safe_model_file})
 
     # Keeping track of the best model. We go after smile identification which
     # corresponds to precision. Class 0 is # non_smile and class 1 is smile
@@ -119,6 +172,7 @@ def train_eval_model(model_name, data_dir,
     pbar_val = tqdm(total=len(val_loader), desc="Validation",
                     position=2, leave=True)
     time_start_training = time.time()
+    timestamp_start = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     
     # ********************* Training loop *********************
     for epoch in range(epochs):
@@ -140,6 +194,8 @@ def train_eval_model(model_name, data_dir,
             optimizer.step()
             running_loss += loss.item()
             pbar_train.update(1)
+            
+        scheduler.step()
         
         # Evaluation on the validation set
         model.eval()
@@ -202,5 +258,7 @@ def train_eval_model(model_name, data_dir,
     if wandb_id is not None:
         wandb.finish()
 
-    return {"params": params, "duration_min": time_duration_training/60,
+    return {"params": params,
+            "timestamp_start_utc": timestamp_start,
+            "duration_min": time_duration_training/60,
             "best_metrics": best_metrics, "log": log}
