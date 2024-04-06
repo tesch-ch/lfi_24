@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 # import torchvision
 from torchvision import datasets, models, transforms
@@ -6,16 +7,32 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from tqdm.auto import tqdm
 
 
-# def train_eval_model(wandb_id, data_dir, batch_size=128, epochs=100, lr=0.01, momentum=0.9):
 def train_eval_model(model_name, data_dir,
                      batch_size, epochs, lr, momentum,
                      cuda_force=False,
                      log: list|None=None,
                      wandb_id=None, wandb_project="LfI24",
                      safe_model=False, safe_model_file=""):
-    # TODO: log dict, time, best_model, extern model classes for load with state dict
+    # TODO: time, extern model classes for load with state dict
+    # Store parameters for logging
+    params = {
+    "model_name": model_name,
+    "data_dir": data_dir,
+    "batch_size": batch_size,
+    "epochs": epochs,
+    "lr": lr,
+    "momentum": momentum,
+    "cuda_force": cuda_force,
+    "log": log,
+    "wandb_id": wandb_id,
+    "wandb_project": wandb_project,
+    "safe_model": safe_model,
+    "safe_model_file": safe_model_file
+    }
+
 
     # Cuda setup
     if torch.cuda.is_available():
@@ -27,7 +44,7 @@ def train_eval_model(model_name, data_dir,
           
     # Data transforms
     transform = transforms.Compose([
-        transforms.Resize(224),
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -38,12 +55,17 @@ def train_eval_model(model_name, data_dir,
     val_set = datasets.ImageFolder(os.path.join(data_dir, 'val'),
                                    transform=transform)
     
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True,
+                              num_workers=4)
+    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False,
+                            num_workers=4)
     
     # Model setup
     if model_name == "baseline":
         model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
+        # Freeze all layers in the network
+        for param in model.parameters():
+            param.requires_grad = False
         num_features = model.fc.in_features
         model.fc = nn.Linear(num_features, 2)
         model = model.to(device)
@@ -70,11 +92,26 @@ def train_eval_model(model_name, data_dir,
     best_precision = -1.0
     best_metrics = {}
 
-    # Training and Validation
-    print("Training started...")
+    # Training loop setup
+    pbar_epochs = tqdm(total=epochs, desc="Epochs",
+                       position=0, leave=True)
+    pbar_train = tqdm(total=len(train_loader), desc="Training",
+                      position=1, leave=True)
+    pbar_val = tqdm(total=len(val_loader), desc="Validation",
+                    position=2, leave=True)
+    
+    # Training loop
+    time_start_training = time.time()
     for epoch in range(epochs):
+        time_start_epoch = time.time()
+        # Set progress bars
+        pbar_epochs.set_description(f"Epoch {epoch+1}/{epochs}")
+        pbar_train.reset(total=len(train_loader))
+        pbar_val.reset(total=len(val_loader))
+
         model.train()
-        running_loss = 0.0
+        running_loss = 0.0 # training loss
+        running_loss_val = 0.0 # validation loss
         for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
@@ -83,6 +120,7 @@ def train_eval_model(model_name, data_dir,
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
+            pbar_train.update(1)
         
         # Evaluation on the validation set
         model.eval()
@@ -92,9 +130,12 @@ def train_eval_model(model_name, data_dir,
             for inputs, labels in val_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
+                loss_val = criterion(outputs, labels)
+                running_loss_val += loss_val.item()
                 _, preds = torch.max(outputs, 1)
                 all_preds.extend(preds.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
+                pbar_val.update(1)
         
         # Calculate metrics
         accuracy = accuracy_score(all_labels, all_preds)
@@ -103,8 +144,10 @@ def train_eval_model(model_name, data_dir,
         
         # Logging
         avg_epoch_loss = running_loss / len(train_loader)
+        avg_epoch_loss_val = running_loss_val / len(val_loader)
         epoch_log = {"epoch": epoch + 1, 
-                     "loss": avg_epoch_loss, 
+                     "train_loss": avg_epoch_loss,
+                     "val_loss": avg_epoch_loss_val,
                      "accuracy": accuracy, 
                      "precision": precision, 
                      "recall": recall, 
@@ -121,7 +164,12 @@ def train_eval_model(model_name, data_dir,
             best_precision = precision
             best_metrics = epoch_log
         
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_epoch_loss}, Precision: {precision}")
+        time_duration_epoch = time.time() - time_start_epoch
+        pbar_epochs.set_postfix_str(
+            f"Epoch {epoch+1}:\n"
+            f"Train Loss: {avg_epoch_loss:.2f}, Precision: {precision:.2f}, "
+            f"Duration: {time_duration_epoch:.2f}s")
+        pbar_epochs.update(1)
 
 
     # Save best model
@@ -133,4 +181,7 @@ def train_eval_model(model_name, data_dir,
     if wandb_id is not None:
         wandb.finish()
 
-    return {"best_metrics": best_metrics, "log": log}
+    # Return log and metrics
+
+
+    return {"params": params, "best_metrics": best_metrics, "log": log}

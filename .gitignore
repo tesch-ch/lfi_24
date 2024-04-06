@@ -2,10 +2,15 @@
 
 # Google Drive temporary files (for colab)
 .tmp.driveupload
+.tmp.drivedownload
 
 data/raw/
 data/dataset/
 data/dataset.zip
+
+examples/*
+train/results/dummy/
+
 wandb
 
 # Byte-compiled / optimized / DLL files
