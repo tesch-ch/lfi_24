@@ -2,10 +2,11 @@
 
 # Google Drive temporary files (for colab)
 .tmp.driveupload
+
 data/raw/
 data/dataset/
 data/dataset.zip
-
+wandb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
