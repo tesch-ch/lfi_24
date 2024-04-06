@@ -27,6 +27,25 @@ class ModelBaseline(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+
+class ResNet50Based2FC(nn.Module):
+    """Same as above with two fully connected layers.
+    """
+    def __init__(self):
+        super(ResNet50Based2FC, self).__init__()
+        self.model = models.resnet50(
+            weights=models.ResNet50_Weights.IMAGENET1K_V2)
+        for param in self.model.parameters():
+            param.requires_grad = False
+        num_features = self.model.fc.in_features
+        self.model.fc = nn.Sequential(
+            nn.Linear(num_features, 512),
+            nn.ReLU(),
+            nn.Linear(512, 2))
+    def forward(self, x):
+        return self.model(x)
+
+
 # influenced by https://github.com/pytorch/vision/blob/main/references/classification/train.py
 def train_eval_model(model_name: str,
                      data_dir: str,
@@ -100,9 +119,12 @@ def train_eval_model(model_name: str,
     # Model setup
     if model_name == "baseline":
         model = ModelBaseline()
-        model = model.to(device)
+    elif model_name == "resnet50_2fc":
+        model = ResNet50Based2FC()
     else:
         raise NotImplementedError(f"Model {model_name} not implemented.")
+    
+    model = model.to(device)
 
     # label_smoothing = 0.0 means no smoothing
     criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)

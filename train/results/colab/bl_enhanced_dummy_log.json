@@ -1,0 +1,76 @@
+{
+    "params": {
+        "model_name": "baseline",
+        "data_dir": "drive/Othercomputers/pc/dataset_mini",
+        "batch_size": 2,
+        "epochs": 4,
+        "momentum": 0.9,
+        "lr": 0.01,
+        "weight_decay": 2e-05,
+        "useCosineAnnealingLR": true,
+        "warmup_epochs": 2,
+        "warmup_lr_decay": 0.01,
+        "label_smoothing": 0.1,
+        "n_data_workers": 4,
+        "pin_memory": true,
+        "cuda_force": false,
+        "wandb_id": "7ckmnoj0",
+        "wandb_project": "my-awesome-project",
+        "safe_model": true,
+        "safe_model_file": "drive/Othercomputers/pc/train/results/colab/bl_enhanced_dummy.pth"
+    },
+    "timestamp_start_utc": "2024-04-06 17:58:26",
+    "duration_min": 0.6539797147115072,
+    "best_metrics": {
+        "epoch": 4,
+        "duration_s": 9.606028318405151,
+        "train_loss": 0.4816523790359497,
+        "val_loss": 0.7517119310796261,
+        "accuracy": 0.5625,
+        "precision": 0.6,
+        "recall": 0.375,
+        "f1_score": 0.4615384615384615
+    },
+    "log": [
+        {
+            "epoch": 1,
+            "duration_s": 12.031384944915771,
+            "train_loss": 0.6835461333394051,
+            "val_loss": 0.705145038664341,
+            "accuracy": 0.4375,
+            "precision": 0.46153846153846156,
+            "recall": 0.75,
+            "f1_score": 0.5714285714285714
+        },
+        {
+            "epoch": 2,
+            "duration_s": 9.039485692977905,
+            "train_loss": 0.7180946320295334,
+            "val_loss": 0.7157167792320251,
+            "accuracy": 0.4375,
+            "precision": 0.4666666666666667,
+            "recall": 0.875,
+            "f1_score": 0.608695652173913
+        },
+        {
+            "epoch": 3,
+            "duration_s": 8.51784634590149,
+            "train_loss": 0.611325953155756,
+            "val_loss": 0.8556517362594604,
+            "accuracy": 0.5,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0
+        },
+        {
+            "epoch": 4,
+            "duration_s": 9.606028318405151,
+            "train_loss": 0.4816523790359497,
+            "val_loss": 0.7517119310796261,
+            "accuracy": 0.5625,
+            "precision": 0.6,
+            "recall": 0.375,
+            "f1_score": 0.4615384615384615
+        }
+    ]
+}
