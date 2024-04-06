@@ -32,8 +32,8 @@ def train_eval_model(model_name: str,
                      data_dir: str,
                      batch_size: int,
                      epochs: int,
-                     lr: float,
                      momentum: float,
+                     lr: float,
                      weight_decay: float=0.0,
                      useCosineAnnealingLR: bool=False,
                      warmup_epochs: int=0,
@@ -54,8 +54,8 @@ def train_eval_model(model_name: str,
     "data_dir": data_dir,
     "batch_size": batch_size,
     "epochs": epochs,
-    "lr": lr,
     "momentum": momentum,
+    "lr": lr,
     "weight_decay": weight_decay,
     "useCosineAnnealingLR": useCosineAnnealingLR,
     "warmup_epochs": warmup_epochs,
@@ -107,6 +107,7 @@ def train_eval_model(model_name: str,
     # label_smoothing = 0.0 means no smoothing
     criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
 
+    # Optimizer Setup
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum,
                           weight_decay=weight_decay)
     
@@ -126,7 +127,7 @@ def train_eval_model(model_name: str,
         # In order to not manually keep track of warmup and main training,
         # I'll use SequentialILR. It will take care of scheduler switching
         # automatically.
-        scheduler = torch.optim.lr_scheduler.SequentialILR(
+        scheduler = torch.optim.lr_scheduler.SequentialLR(
                 optimizer, schedulers=[scheduler_warmup, scheduler_main_lr],
                 milestones=[warmup_epochs])
     else:
@@ -144,8 +145,8 @@ def train_eval_model(model_name: str,
                    config={"model_name": model_name,
                            "data_dir": data_dir,
                            "batch_size": batch_size,
-                           "epochs": epochs,
                            "lr": lr,
+                           "epochs": epochs,
                            "momentum": momentum,
                            "weight_decay": weight_decay,
                            "useCosineAnnealingLR": useCosineAnnealingLR,
@@ -194,7 +195,7 @@ def train_eval_model(model_name: str,
             optimizer.step()
             running_loss += loss.item()
             pbar_train.update(1)
-            
+
         scheduler.step()
         
         # Evaluation on the validation set
