@@ -31,6 +31,8 @@ Models are trained from within a notebook running on Google Colab.
 - add early stopping
 - learning rate scheduler
 
+### stuff you could implement
+- checkpointing mechanisms
 
 ## Finds
 - https://github.com/pytorch/vision/tree/main/references/classification
