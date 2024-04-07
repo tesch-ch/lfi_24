@@ -121,7 +121,7 @@ def train_eval_model(model_name: str,
         if cuda_force:
             raise ValueError("CUDA is not available.")
           
-    # Data transforms
+    # Data transforms (normalization from ImageNet1k)
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
