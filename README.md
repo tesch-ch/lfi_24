@@ -1,4 +1,15 @@
-# lfi_24
+# Learning from Images: Smile Classifier
+
+A binary image classification model that can distinguish between non-smiling and smiling people has been trained.  
+The model is based on [ResNet-50](https://arxiv.org/abs/1512.03385) and pretrained with PyTorch’s [IMAGENET1K_V2 weights](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html).
+The Datasets used for training are [GENKI-4k](https://inc.ucsd.edu/mplab/398/) (4,000 pictures) and the [UCF Selfie Data Set](https://www.crcv.ucf.edu/data/Selfie/).  
+Models were trained utilizing various hyper parameter settings and different mitigation techniques about the imbalanced data. Training and testing of 30 parameter combinations was logged and can be explored over Weights and Biases:
+- training runs: https://wandb.ai/chr_te/LfI24/workspace
+- testset evaluations: https://wandb.ai/chr_te/LfI24_test/table
+
+Within a [dummy app](app/) the best model was used for classifying a short video:
+
+https://github.com/tesch-ch/lfi_24/assets/134967675/d13abb66-f71b-4afb-9a46-bc3800085961
 
 ## Select Training Data
 
