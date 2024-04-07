@@ -14,6 +14,7 @@ examples/*
 train/results/dummy/
 
 *.pth
+!/train/results/colab/rn50_uf34_1_us_final.pth
 
 wandb
 
