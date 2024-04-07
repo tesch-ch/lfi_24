@@ -349,7 +349,7 @@ def evaluate_model(model_file_path: str,
                 leave=True)
 
     with torch.no_grad():
-        for inputs, labels in test_loader:
+        for batch_idx, (inputs, labels) in enumerate(test_loader):
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             _, preds = torch.max(outputs, 1)
@@ -360,7 +360,9 @@ def evaluate_model(model_file_path: str,
             if make_detailed_predictions:
                 probabilities = nn.functional.softmax(outputs, dim=1)
                 for i in range(inputs.size(0)):
-                    file_path = test_loader.dataset.samples[i][0]
+                    # OH MY GOD THIS GLOBAL INDEX FIX TOOK ME TOO LONG!!!
+                    global_index = batch_idx * batch_size + i
+                    file_path = test_loader.dataset.samples[global_index][0]
                     image_file = os.path.basename(file_path)
                     true_label_name = test_set.classes[labels[i].item()]
                     pred_label_name = test_set.classes[preds[i].item()]
