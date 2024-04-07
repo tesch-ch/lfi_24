@@ -11,9 +11,9 @@ With minimal tweaks this can be used in realtime e.g. for classifying live camer
 To add video you need to upload your video file and reference it inline
 
 ```
-https://github.com/tesch-ch/lfi_24/blob/main/app/classified.mp4
+https://raw.github.com/tesch-ch/lfi_24/blob/main/app/classified.mp4
 ```
 
 Example:
 
-https://github.com/tesch-ch/lfi_24/blob/main/app/classified.mp4
+https://raw.github.com/tesch-ch/lfi_24/blob/main/app/classified.mp4
