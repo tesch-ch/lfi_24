@@ -3,13 +3,4 @@ This is just a dummy open cv app utilizing the model with the highest F1 score (
 Classifying `data/sample_vid_mp4`, the following video was created via the app:
 
 
-
-With minimal tweaks this can be used in realtime e.g. for classifying live camera feed:
-
-### Adding video
-
-To add video you need to upload your video file and reference it inline
-
-Example:
-
-https://user-images.githubusercontent.com/1702215/158075475-c23004ab-827a-45ad-bdba-aee29ac5b582.mp4
+With minimal tweaks this can be used in realtime e.g. for classifying live camera feed.
