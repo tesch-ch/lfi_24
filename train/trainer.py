@@ -6,8 +6,10 @@ from torchvision import datasets, models, transforms
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import (accuracy_score, precision_recall_fscore_support,
+                             confusion_matrix)
 from tqdm.auto import tqdm
+
 
 class ModelBaseline(nn.Module):
     """Used as baseline for the transfer learning binary classification task
@@ -29,7 +31,7 @@ class ModelBaseline(nn.Module):
 
 
 class ResNet50Based2FC(nn.Module):
-    """Same as above with two fully connected layers.
+    """Frozen layer 1-4, two fully connected layers.
     """
     def __init__(self):
         super(ResNet50Based2FC, self).__init__()
@@ -46,7 +48,44 @@ class ResNet50Based2FC(nn.Module):
         return self.model(x)
 
 
-# influenced by https://github.com/pytorch/vision/blob/main/references/classification/train.py
+class ResNet50Lr4(nn.Module):
+    """Unfrozen layer 4 and fully connected layer with 2 outputs.
+    """
+    def __init__(self):
+        super(ResNet50Lr4, self).__init__()
+        self.model = models.resnet50(
+            weights=models.ResNet50_Weights.IMAGENET1K_V2)
+        for param in self.model.parameters():
+            param.requires_grad = False
+        for param in self.model.layer4.parameters():
+            param.requires_grad = True
+        num_features = self.model.fc.in_features
+        self.model.fc = nn.Linear(num_features, 2)
+    def forward(self, x):
+        return self.model(x)
+
+
+class ResNet50Lr34(nn.Module):
+    """Unfrozen layer 3, 4, and fully connected layer with 2 outputs.
+    """
+    def __init__(self):
+        super(ResNet50Lr34, self).__init__()
+        self.model = models.resnet50(
+            weights=models.ResNet50_Weights.IMAGENET1K_V2)
+        for param in self.model.parameters():
+            param.requires_grad = False
+        for param in self.model.layer3.parameters():
+            param.requires_grad = True
+        for param in self.model.layer4.parameters():
+            param.requires_grad = True
+        num_features = self.model.fc.in_features
+        self.model.fc = nn.Linear(num_features, 2)
+    def forward(self, x):
+        return self.model(x)
+
+
+
+# outline oriented https://github.com/pytorch/vision/blob/main/references/classification/train.py
 def train_eval_model(model_name: str,
                      data_dir: str,
                      batch_size: int,
@@ -58,6 +97,7 @@ def train_eval_model(model_name: str,
                      warmup_epochs: int=0,
                      warmup_lr_decay: float=0.0,
                      label_smoothing: float=0.0,
+                     class_weights: tuple[float, float]|None=None,
                      n_data_workers: int=4,
                      pin_memory: bool=True,
                      cuda_force: bool=False,
@@ -65,32 +105,15 @@ def train_eval_model(model_name: str,
                      wandb_id: str|None=None,
                      wandb_project: str="LfI24",
                      safe_model: bool=False,
-                     safe_model_file: str=""):
+                     safe_model_file: str="",
+                     safe_model_file_final: str=""):
 
-    # Store parameters for logging
-    params = {
-    "model_name": model_name,
-    "data_dir": data_dir,
-    "batch_size": batch_size,
-    "epochs": epochs,
-    "momentum": momentum,
-    "lr": lr,
-    "weight_decay": weight_decay,
-    "useCosineAnnealingLR": useCosineAnnealingLR,
-    "warmup_epochs": warmup_epochs,
-    "warmup_lr_decay": warmup_lr_decay,
-    "label_smoothing": label_smoothing,
-    "n_data_workers": n_data_workers,
-    "pin_memory": pin_memory,
-    "cuda_force": cuda_force,
-    "wandb_id": wandb_id,
-    "wandb_project": wandb_project,
-    "safe_model": safe_model,
-    "safe_model_file": safe_model_file
-    }
+    # Store function parameters to dict for logging
+    params = locals().copy()
+    # Do not keep a reference to the list that is being logged to
+    del params["log"]
 
-
-    # Cuda setup
+    # Cuda/device setup
     if torch.cuda.is_available():
         device = torch.device("cuda")
     else:
@@ -110,6 +133,8 @@ def train_eval_model(model_name: str,
                                      transform=transform)
     val_set = datasets.ImageFolder(os.path.join(data_dir, 'val'),
                                    transform=transform)
+    # Print classes with respective encoding
+    print(f"Data encoding: {train_set.class_to_idx}")
     
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True,
                               num_workers=n_data_workers, pin_memory=pin_memory)
@@ -121,13 +146,20 @@ def train_eval_model(model_name: str,
         model = ModelBaseline()
     elif model_name == "resnet50_2fc":
         model = ResNet50Based2FC()
+    elif model_name == "resnet50_lay4":
+        model = ResNet50Lr4()
+    elif model_name == "resnet50_lay34":
+        model = ResNet50Lr34()
     else:
         raise NotImplementedError(f"Model {model_name} not implemented.")
     
     model = model.to(device)
 
-    # label_smoothing = 0.0 means no smoothing
-    criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+    # Criterion Setup
+    if class_weights is not None:
+        class_weights = torch.tensor(class_weights, dtype=torch.float).to(device)
+    criterion = nn.CrossEntropyLoss(weight=class_weights,
+                                    label_smoothing=label_smoothing)
 
     # Optimizer Setup
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum,
@@ -164,25 +196,12 @@ def train_eval_model(model_name: str,
         wandb.init(project=wandb_project,
                    id=wandb_id,
                    resume="must",
-                   config={"model_name": model_name,
-                           "data_dir": data_dir,
-                           "batch_size": batch_size,
-                           "lr": lr,
-                           "epochs": epochs,
-                           "momentum": momentum,
-                           "weight_decay": weight_decay,
-                           "useCosineAnnealingLR": useCosineAnnealingLR,
-                           "warmup_epochs": warmup_epochs,
-                           "warmup_lr_decay": warmup_lr_decay,
-                           "label_smoothing": label_smoothing,
-                           "n_data_workers": n_data_workers,
-                           "pin_memory": pin_memory,
-                           "cuda_force": cuda_force,
-                           "saved_model": safe_model_file})
+                   config=params)
 
     # Keeping track of the best model. We go after smile identification which
     # corresponds to precision. Class 0 is # non_smile and class 1 is smile
     # (alphabetical order, assigned to by pytorch's ImageFolder).
+    # TODO: Think about what happens in the first few epochs...
     best_state_dict = None
     best_precision = -1.0
     best_metrics = {}
@@ -274,8 +293,12 @@ def train_eval_model(model_name: str,
     time_duration_training = time.time() - time_start_training
     # Save best model
     if safe_model:
-        torch.save(best_state_dict, safe_model_file)
-        print(f"Best model's state dict saved at {safe_model_file}")
+        if safe_model_file != "":
+            torch.save(best_state_dict, safe_model_file)
+            print(f"Best model's state dict saved at {safe_model_file}")
+        if safe_model_file_final != "":
+            torch.save(model, safe_model_file_final)
+            print(f"Final model saved at {safe_model_file_final}")
 
     # Finish run on wandb
     if wandb_id is not None:
@@ -285,3 +308,85 @@ def train_eval_model(model_name: str,
             "timestamp_start_utc": timestamp_start,
             "duration_min": time_duration_training/60,
             "best_metrics": best_metrics, "log": log}
+
+
+
+def evaluate_model(model_state_dict_path: str,
+                   model_name: str,
+                   test_set_path: str,
+                   batch_size: int=256,
+                   num_workers: int=4,
+                   make_detailed_predictions: bool=True):
+
+    # Cuda/device setup
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+        print("CUDA is not available.")
+
+    # Data transforms
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    # Test set
+    test_set = datasets.ImageFolder(test_set_path, transform=transform)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False,
+                             num_workers=num_workers, pin_memory=True)
+
+    # Model setup
+    if model_name == "baseline":
+        model = ModelBaseline()
+    elif model_name == "resnet50_2fc":
+        model = ResNet50Based2FC()
+    elif model_name == "resnet50_lay4":
+        model = ResNet50Lr4()
+    elif model_name == "resnet50_lay34":
+        model = ResNet50Lr34()
+    else:
+        raise ValueError(f"Model {model_name} is unknown.")
+    
+    model = model.to(device)
+    if torch.cuda.is_available():
+        model.load_state_dict(torch.load(model_state_dict_path))
+    else:
+        model.load_state_dict(torch.load(model_state_dict_path, map_location='cpu'))
+    model.eval()
+
+    # Setup eval loop
+    all_labels = []
+    all_preds = []
+    detailed_predictions = []
+    pbar = tqdm(total=len(test_loader), desc="Evaluation", position=0,
+                leave=True)
+
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            _, preds = torch.max(outputs, 1)
+
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+            if make_detailed_predictions:
+                probabilities = nn.functional.softmax(outputs, dim=1)
+                for i in range(inputs.size(0)):
+                    file_path = test_loader.dataset.samples[i][0]
+                    true_label_name = test_set.classes[labels[i].item()]
+                    pred_label_name = test_set.classes[preds[i].item()]
+                    probs = probabilities[i].cpu().numpy()
+
+                    detailed_predictions.append({
+                        "file_path": file_path,
+                        "true_label": true_label_name,
+                        "predicted_label": pred_label_name,
+                        "probabilities": probs
+                    })
+            pbar.update(1)
+
+
+    return all_labels, all_preds, detailed_predictions

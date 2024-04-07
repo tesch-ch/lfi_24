@@ -7,9 +7,13 @@
 data/raw/
 data/dataset/
 data/dataset.zip
+data/dataset_us/
+data/dataset_us.zip
 
 examples/*
 train/results/dummy/
+
+*.pth
 
 wandb
 

@@ -26,15 +26,19 @@ Models are trained from within a notebook running on Google Colab.
 - opt=sgd
 - momentum=0.9
 - lr=0.01
+- --> second fc makes no difference 
 
 ### Optimizations
 - learning rate tuning?
 - add early stopping
 - learning rate scheduler
 - in cross entropy loss label smoothing
+- weighted loss function
 
 ### stuff you could implement
 - checkpointing mechanisms
+
+
 
 ## Finds
 - https://github.com/pytorch/vision/tree/main/references/classification
@@ -43,3 +47,4 @@ Models are trained from within a notebook running on Google Colab.
   - https://pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html
   - https://github.com/pytorch/vision/issues/3995
 - https://github.com/pytorch/examples/blob/main/imagenet/main.py
+- https://imbalanced-learn.org/stable/index.html

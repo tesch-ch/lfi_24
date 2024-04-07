@@ -58,6 +58,7 @@
 - Choose two output neurons for better comparison between model's probabilities (softmax, cross entropy loss...)
 - One vs two output neurons
 - RayTune in the future...
+- Data might be imbalanced in many ways, such as underrepresented smiling males...
 
 # old readme
 ## Datasets
