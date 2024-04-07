@@ -311,19 +311,11 @@ def train_eval_model(model_name: str,
 
 
 
-def evaluate_model(model_state_dict_path: str,
-                   model_name: str,
+def evaluate_model(model_file_path: str,
                    test_set_path: str,
                    batch_size: int=256,
                    num_workers: int=4,
                    make_detailed_predictions: bool=True):
-
-    # Cuda/device setup
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
-        print("CUDA is not available.")
 
     # Data transforms
     transform = transforms.Compose([
@@ -337,23 +329,16 @@ def evaluate_model(model_state_dict_path: str,
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False,
                              num_workers=num_workers, pin_memory=True)
 
-    # Model setup
-    if model_name == "baseline":
-        model = ModelBaseline()
-    elif model_name == "resnet50_2fc":
-        model = ResNet50Based2FC()
-    elif model_name == "resnet50_lay4":
-        model = ResNet50Lr4()
-    elif model_name == "resnet50_lay34":
-        model = ResNet50Lr34()
-    else:
-        raise ValueError(f"Model {model_name} is unknown.")
-    
-    model = model.to(device)
+    # Cuda/device setup
     if torch.cuda.is_available():
-        model.load_state_dict(torch.load(model_state_dict_path))
+        device = torch.device("cuda")
     else:
-        model.load_state_dict(torch.load(model_state_dict_path, map_location='cpu'))
+        device = torch.device("cpu")
+        print("CUDA is not available.")
+
+    # Model setup
+    model = torch.load(model_file_path, map_location=device)
+    model = model.to(device)
     model.eval()
 
     # Setup eval loop
@@ -376,17 +361,19 @@ def evaluate_model(model_state_dict_path: str,
                 probabilities = nn.functional.softmax(outputs, dim=1)
                 for i in range(inputs.size(0)):
                     file_path = test_loader.dataset.samples[i][0]
+                    image_file = os.path.basename(file_path)
                     true_label_name = test_set.classes[labels[i].item()]
                     pred_label_name = test_set.classes[preds[i].item()]
                     probs = probabilities[i].cpu().numpy()
 
                     detailed_predictions.append({
-                        "file_path": file_path,
+                        "file": image_file,
                         "true_label": true_label_name,
                         "predicted_label": pred_label_name,
-                        "probabilities": probs
-                    })
+                        "probabilities": list(probs)})
             pbar.update(1)
 
-
-    return all_labels, all_preds, detailed_predictions
+    return {"labels": all_labels,
+            "predictions": all_preds,
+            "classes": test_set.classes,
+            "detailed_predictions": detailed_predictions}
