@@ -149,11 +149,11 @@ The following table features the top 5 models based on the balanced test set F1 
 | rn50_uf34_3_us | resnet50_lay34 | 0.76 | 0.76     | 0.77      | 0.75   | 0.001 | 128        |     (1, 1)   | 50     | 0.1             | 0.9      | 5             | 0.01            | 0.0001       | true                 |
 
 <p align="center">
-  <img src="train/results/test_set_results/rn50_uf34_1_us_confusion.jpg" alt="confusion" style="width: 33%;">
-  <img src="train/results/test_set_results/rn50_uf34_2_us_confusion.jpg" alt="confusion" style="width: 33%;">
-  <img src="train/results/test_set_results/rn50_uf4_1_us_confusion.jpg" alt="confusion" style="width: 33%;">
-  <img src="train/results/test_set_results/rn50_uf34_4_us_confusion.jpg" alt="confusion" style="width: 33%;">
-  <img src="train/results/test_set_results/rn50_uf34_3_us_confusion.jpg" alt="confusion" style="width: 33%;">
+  <img src="train/results/test_set_results/rn50_uf34_1_us_confusion.jpg" alt="confusion" style="width: 30%;">
+  <img src="train/results/test_set_results/rn50_uf34_2_us_confusion.jpg" alt="confusion" style="width: 30%;">
+  <img src="train/results/test_set_results/rn50_uf4_1_us_confusion.jpg" alt="confusion" style="width: 30%;">
+  <img src="train/results/test_set_results/rn50_uf34_4_us_confusion.jpg" alt="confusion" style="width: 30%;">
+  <img src="train/results/test_set_results/rn50_uf34_3_us_confusion.jpg" alt="confusion" style="width: 30%;">
 </p>
 
 All the top performing models were trained on the balanced dataset and feature unfrozen main stages. The top 5 models perform generally well on the test set.
@@ -170,10 +170,16 @@ It should be mentioned, that the first row originates from the UCF dataset, the 
 This should not imply that the model overall tends to predict smiles significantly more often as can be seen in above confusion matrix.  
 A short video I recorded was classified [here](app/classified.mp4) and the predictions perfectly agree to my understanding of "how smiling works".
 
-### Critique on Test Set
-dfdf
+### Possible Data Leakage
+The following only concerns models trained on the imbalanced dataset (not the top models):  
+All model's testset evaluation was done on the balanced dataset's test subset. In the preprocessing step, the imbalanced and balanced datasets were independently shuffled before splitting into train, val, and test.
+This was a conceptual mistake, the under sampling step should have been done based on the already split imbalanced dataset.    
+This means there probably is data leaking when evaluating with the balanced test set on a model that was trained on the imbalanced set.  
+This data leakage in final testing only concerns models trained on the imbalanced dataset (no _us suffix). So, this is not really too much of a concern, considering that the models trained on the imbalanced dataset are performing significantly worse than the ones trained on the balanced dataset anyway.
 
 ## Conclusion and Future Work
+
+
 - train model from ground up
 - Use hyper parameter sweeps (e.g. RayTune)
 - Data Augmentation e.g. random cropping, horizontal flipping, and color jittering.
