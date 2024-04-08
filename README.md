@@ -178,7 +178,7 @@ This data leakage in final testing only concerns models trained on the imbalance
 
 ## Conclusion and Future Work
 The smile detection works reliably and it can catch even subtle smiling. For the transfer learning task to be successful, it was not enough to simply replace the last fully connected layer.
-The best performing model (F1=0.80) had half of it's main stages additionally unfrozen. Yet, this shows the power of transfer learning, as basically half of the ResNet-50 was fixed and used the pretrained ImageNet-1K weights were used.  
+The best performing model (F1=0.80) had half of it's main stages additionally unfrozen. Yet, this shows the power of transfer learning, as basically half of the ResNet-50 was fixed and the pretrained ImageNet-1K weights were used.  
 Two more aspects were paramount in creating a working model: Finding the right learning rate and balancing the dataset.
 In the future, performance could be further improved by exploring:
 - Even more unfrozen layers and completely training a model from ground up
