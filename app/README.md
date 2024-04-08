@@ -1,5 +1,5 @@
 # Dummy App
-This is just a dummy open cv app utilizing the model with the highest F1 score (`/train/results/colab/rn50_uf34_1_us_final.pth`) as a demonstrator... It was basically written and fixed up with ChatGPT within 5 minutes.  
+This is just a dummy open cv app utilizing the model with the highest F1 score [rn50_uf34_1_us_final.pth](/train/results/colab/rn50_uf34_1_us_final.pth) as a demonstrator... It was basically written and fixed up with ChatGPT within 5 minutes.  
 ```
 >cd app
 >python dummy_app.py
