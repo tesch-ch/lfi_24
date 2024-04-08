@@ -2,47 +2,111 @@
 
 A binary image classification model that can distinguish between non-smiling and smiling people has been trained.  
 The model is based on [ResNet-50](https://arxiv.org/abs/1512.03385) and pretrained with PyTorch’s [IMAGENET1K_V2 weights](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html).
-The Datasets used for training are [GENKI-4k](https://inc.ucsd.edu/mplab/398/) (4,000 pictures) and the [UCF Selfie Data Set](https://www.crcv.ucf.edu/data/Selfie/).  
-Models were trained utilizing various hyper parameter settings and different mitigation techniques about the imbalanced data. Training and testing of 30 parameter combinations was logged and can be explored over Weights and Biases:
+The datasets used for training are [GENKI-4k](https://inc.ucsd.edu/mplab/398/) (4,000 pictures) and the [UCF Selfie Data Set](https://www.crcv.ucf.edu/data/Selfie/) (46,836 pictures).  
+Models were trained utilizing various hyper parameter combinations and different data imbalance mitigation techniques. Training and testing of 30 parameter combinations was logged and can be explored via wandb:
 - training runs: https://wandb.ai/chr_te/LfI24/workspace
-- testset evaluations: https://wandb.ai/chr_te/LfI24_test/table
+- evaluations on testset: https://wandb.ai/chr_te/LfI24_test/table
 
-Within a [dummy app](app/) the best model was used for classifying a short video:
+Within a [dummy app](app/) the [best model](/train/results/colab/rn50_uf34_1_us_final.pth) was used for classifying a short video:
 
 https://github.com/tesch-ch/lfi_24/assets/134967675/d13abb66-f71b-4afb-9a46-bc3800085961
 
-## Select Training Data
+## Motivation
+- pytorch
+- neuroscience
+- everyday world
 
-## Explore Datasets
+## Methodology
 
-## Data Prep
-- Binary Classification (two classes: smile and non smile)
-- Consolidate the GENKI and UCF files according to the following structure:
-  ```
-  dataset/
-  ├── train/
-  │   ├── smile/
-  │   │   ├── 1.jpg
-  │   │   └── ...
-  │   └── non_smile/
-  │       ├── 2.jpg
-  │       └── ...
-  ├── val/
-  │   ├── smile/
-  │   │   ├── 3.jpg
-  │   │   └── ...
-  │   └── non_smile/
-  │       ├── 4.jpg
-  │       └── ...
-  └── test/
-      ├── smile/
-      │   ├── 5.jpg
-      │   └── ...
-      └── non_smile/
-          ├── 6.jpg
-          └── ...
-  ```
-  - Load all the paths to the files in a 
+### Dataset Selection
+Two datasets were identified that were already labeled in non_smile and smile.
+
+#### GENKI-4k
+[This dataset](https://inc.ucsd.edu/mplab/398/) holds 4,0000 pictures and it can be directly downloaded [here](https://inc.ucsd.edu/mplab/398/media/genki4k.tar). 54 % of the pictures are labelled as smiling. So, we consider the dataset rather balanced. Here are 10 sampled pictures from the dataset:
+<p align="center">
+  <img src="data/genki_sample.jpg" alt="genki sample" style="width: 80%;">
+</p>
+In the first row, we see pictures labelled as smile and in the second non_smile. Many of the pictures in this dataset have somewhat of a portrait aspect to them, and these pictures seem to predate the selfie era.
+
+#### UCF Selfie Data Set
+The dataset holds 46,836 pictures and can be directly downloaded [here](https://www.crcv.ucf.edu/data/Selfie/Selfie-dataset.tar.gz). It's an imbalanced dataset, where 74 % of pictures are labelled non_smiling. The pictures were downloaded from Instagram in 2015. Here are 10 samples from the dataset:
+<p align="center">
+  <img src="data/ucf_sample.jpg" alt="genki sample" style="width: 80%;">
+</p>
+
+The first row features pictures which are labelled as smiling, the second row is labelled non_smiling.
+This dataset was labelled by multiple people, which could be the reason that subtle smiles sometimes seem to be labelled as non_smiling  and sometimes as smiling. But, this report is not about the question "what is a smile".  
+A positive aspect is that the data is not as “uniform” as the GENKI set. There are many different backgrounds, people’s faces are photographed from different angles, etc. This might lead to better generalization, even without heavy data augmentation.
+
+### Data Preprocessing and Exploration
+The data preprocessing and a short exploration is in detail described in the [preprocessing notebook](data/preprocess.ipynb). Both datasets come with their respective documentation, which makes loading the data and reorganizing relatively straight forward.  
+The datasets are combined (referred to as the dataset from now on) and split 70-30-30 into training, validation and test sets. A zip archive is created, as this simplifies later on processing via Google Colab. In [`data/dataset_mini/`](data/dataset_mini/) you can find a dummy dataset, with 8 images per class and split.  
+Another thing to mention is, that almost all images are more or less square, this simplifies data loading and preprocessing in the model later on (ResNet's usual input image size is 224x224).
+
+As already established, the dataset is heavily imbalanced. There are approximately 22,000 more non_smile images (count: 36,467) than there are smile images (count: 14,369), which proofed to be problematic in training.  
+This imbalance is mitigated in the preprocessing notebook by calculating class weights and by under sampling the majority class, i.e. dropping a random selection of 22,000 non_smile images. More on this in the training section.
+
+Download links to the preprocessed datasets:
+- unbalanced dataset (50,836 images): https://drive.google.com/file/d/15kxltmK0N3-0VuYRc1mx6frHcmzi-VPk/view?usp=sharing
+- balanced dataset (28,738 images): https://drive.google.com/file/d/159296BtrbBTn7nBarCyCG3Iex4QrQHyC/view?usp=sharing
+
+
+### Base Model
+For the transfer learning task at hand, ResNet-50 is chosen as base model. It offers a great compromise between performance and hardware requirements. The base model's details can be obtained [here](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html). PyTorch's IMAGENET1K_V2 weights are used.
+
+
+## Training
+The training routine is implemented in [`train/trainer.py`](train/trainer.py), in the same file the ResNet-50 based models are defined:
+- ``ModelBaseline``
+  - Layers 1-4 frozen (there are 4 in total)
+  - Custom fully connected layer (two output nodes)
+  - training run prefix: baseline, bl, or bl_enhanced
+- ``ResNet50Based2FC``
+  - Layers 1-4 frozen
+  - Custom two fully connected layers (ReLU activated, two output nodes)
+  - training run prefix: resnet50_2fc
+- ``ResNet50Lr4``
+  - Layers 1-3 frozen
+  - Custom fully connected layer (two output nodes)
+  - training run prefix: rn50_uf4
+- ``ResNet50Lr34``
+  - Layers 1 and 2 frozen
+  - Custom fully connected layer (two output nodes)
+  - training run prefix: rn50_uf34
+
+All models feature two output nodes. Only one output node would suffice for the project's binary classification task, but two nodes allow for [PyTorch's cross entropy loss](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html) as loss function. This implementation enables us to directly perform class weighting as mitigation against imbalanced data, and label smoothing.  
+The training script allows for the following hyper parameters to be set, as optimizer [SGD](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html) is fixed:
+- batch size
+- epochs
+- Optimizer:
+  - momentum
+  - learning rate (lr)
+  - weight_decay
+- lr scheduler:
+  - cosine annealing lr (yes/no)
+  - linear lr warmup
+  - warmup epochs
+- label smoothing
+- class weights
+
+The training is performed via Google Colab utilizing A100 GPU sessions, the respective notebooks can be found in [`train/colab_notebooks/`](train/colab_notebooks/). All training runs are logged and interactively displayed [here](https://wandb.ai/chr_te/LfI24/workspace), and publicly accessible.
+
+
+
+
+
+
+- training pipeline
+- logging to wandb but also logging everything locally, storing the models as pth
+
+
+
+
+
+
+
+
+
 
 
 ## stuff
@@ -71,42 +135,3 @@ https://github.com/tesch-ch/lfi_24/assets/134967675/d13abb66-f71b-4afb-9a46-bc38
 - RayTune in the future...
 - Data might be imbalanced in many ways, such as underrepresented smiling males...
 
-# old readme
-## Datasets
-
-### GENKI-4k
-- 4000 images
-- spanning a wide range of subjects, facial appearance, illumination, geographical, locations, imaging conditions, and camera models
-- Smile content (1=smile, 0=non-smile)
-- Head Pose (yaw, pitch, and roll parameters, in radians)
-- https://inc.ucsd.edu/mplab/398/
-- direct data download link (April 24): https://inc.ucsd.edu/mplab/398/media/genki4k.tar
-- README:  
-    ```
-    GENKI 4K
-    ------------------------------------------------------------------------------------
-
-    This is the GENKI 4K dataset, collected by the Machine Perception Laboratory,
-    University of California, San Diego. This dataset contains 4000 images along 
-    with expression (smile=1, non-smile=0) labels and pose labels (yaw, pitch, and roll,
-    in radians). The file "labels.txt" contains these labels, and the Nth line of the
-    file corresponds to N in the "files" directory.
-
-    We ask that you acknowledge use of this dataset in any papers you publish with the following citation:
-    "http://mplab.ucsd.edu, The MPLab GENKI-4K Dataset."
-    ```
-    - citation: http://mplab.ucsd.edu, The MPLab GENKI-4K Dataset.
-    - Nth line of the file corresponds to N in the "files" directory
-    - expression (smile=1, non-smile=0) labels and pose labels (yaw, pitch, and roll, in radians)
-- labels.txt first 4 rows:  
-    ```
-    1 -0.021162 0.059530 -0.039662
-    1 -0.057745 0.083098 -0.094952
-    1 0.095993 0.028798 0.065996
-    1 0.000000 0.047124 0.171268
-    ```
-
- ### UCF Selfie Data Set
-- 46836 images
-- https://www.crcv.ucf.edu/data/Selfie/
-- direct download link: https://www.crcv.ucf.edu/data/Selfie/Selfie-dataset.tar.gz
