@@ -3,7 +3,7 @@
 A binary image classification model that can distinguish between non-smiling and smiling people has been trained.  
 The model is based on [ResNet-50](https://arxiv.org/abs/1512.03385) and pretrained with PyTorch’s [IMAGENET1K_V2 weights](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html).
 The datasets used for training are [GENKI-4k](https://inc.ucsd.edu/mplab/398/) (4,000 pictures) and the [UCF Selfie Data Set](https://www.crcv.ucf.edu/data/Selfie/) (46,836 pictures).  
-Models were trained utilizing various hyper parameter combinations and different data imbalance mitigation techniques. Training and testing of 30 parameter combinations was logged and can be explored via wandb:
+Models were trained utilizing various hyperparameter combinations and different data imbalance mitigation techniques. Training and testing of 30 parameter combinations was logged and can be explored via wandb:
 - training runs: https://wandb.ai/chr_te/LfI24/workspace
 - evaluations on testset: https://wandb.ai/chr_te/LfI24_test/table
 
@@ -21,7 +21,7 @@ The other one is, that in case of a success, the obtained model could be used as
 Two datasets were identified that were already labeled in non_smile and smile.
 
 #### GENKI-4k
-[This dataset](https://inc.ucsd.edu/mplab/398/) holds 4,0000 pictures and it can be directly downloaded [here](https://inc.ucsd.edu/mplab/398/media/genki4k.tar). 54 % of the pictures are labelled as smiling. So, we consider the dataset rather balanced. Here are 10 sampled pictures from the dataset:
+[This dataset](https://inc.ucsd.edu/mplab/398/) holds 4,000 pictures and it can be directly downloaded [here](https://inc.ucsd.edu/mplab/398/media/genki4k.tar). 54 % of the pictures are labelled as smiling. So, we consider the dataset rather balanced. Here are 10 sampled pictures from the dataset:
 <p align="center">
   <img src="data/genki_sample.jpg" alt="genki sample" style="width: 80%;">
 </p>
@@ -74,7 +74,7 @@ The training routine is implemented in [`trainer.py`](train/trainer.py), in the 
   - training run prefix: rn50_uf34
 
 All models feature two output nodes. Only one output node would suffice for the project's binary classification task, but two nodes allow for [PyTorch's cross entropy loss](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html) as loss function. This implementation enables us to directly perform class weighting as mitigation against imbalanced data, and label smoothing.  
-The training script allows for the following hyper parameters to be set, as optimizer [SGD](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html) is fixed:
+The training script allows for the following hyperparameters to be set, as optimizer [SGD](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html) is fixed:
 - batch size
 - epochs
 - Optimizer:
@@ -101,22 +101,22 @@ The models are evaluated on the balanced test set in [test_models.ipynb](train/c
 In the following sections, some effects of selected hyperparameters on model training and performance are highlighted in a qualitative way. For comparing the actual metrics checkout the [training logs](https://wandb.ai/chr_te/LfI24/workspace).
 
 ### Learning Rate
-The learning rate had a substantial effect on training, especially stability. The recipe suggested lr=0.5, this was way to high for the models with frozen layers 1-4. Models with unfrozen layer 3, or 3 and 4 handled higher learning rates such as 0.1 better. 
+The learning rate had a substantial effect on training, especially stability. The recipe suggested lr=0.5, this was way too high for the models with frozen layers 1-4. Models with unfrozen layer 3, or 3 and 4 handled higher learning rates such as 0.1 better. 
 <p align="center">
-  <img src="graphics_report/lr_stability.JPG" alt="lr effect" style="width: 100%;">
+  <img src="graphics_report/lr_stability.JPG" alt="lr stability" style="width: 100%;">
 </p>
 Here we see a baseline model that is trained with lr=0.1 (red) and the training is highly instable, whereas training with lr=0.001 on the same parameters (blue) is way more stable.
 
 ### One vs Two Fully Connected Output Layers
 <p align="center">
-  <img src="graphics_report/n_fc.JPG" alt="lr effect" style="width: 100%;">
+  <img src="graphics_report/n_fc.JPG" alt="n fc" style="width: 100%;">
 </p>
 The graphic show two training runs with the same hyperparameters, one with two fully connected output layers (resnet50_2fc_2, green), the other with one fully connected layer (bl_enhanced_2, blue). In all the training runs, no significant difference could be made out between the depth of the output layer. Hence, models with only one output layer were pursued further.
 
 ### Unfreezing Main Stages
 ResNet-50 features 4 main stages (in PyTorch called layer 1-4). Unfreezing layer 4 or layer 3 and 4 boosted overall performance significantly, as can be seen e.g. in training on the validation metrics:
 <p align="center">
-  <img src="graphics_report/layer_unfreezing.JPG" alt="lr effect" style="width: 100%;">
+  <img src="graphics_report/layer_unfreezing.JPG" alt="main stages" style="width: 100%;">
 </p>
 All hyperparameters are the same here, only the unfreezing of layers is changed. The worst scores are achieved by the model utilizing no unfreezing of the main stages (magenta), the models with an unfrozen layer 4 (red) performs significantly better, the model with unfrozen layer 3 and 4 (green) outperforms both other models in all of the metrics.
 
@@ -128,7 +128,7 @@ Initially, only the imbalanced dataset was used, the hope here being that workin
 Using higher class weights for the minority class (smiling) in the cross entropy loss function significantly boosted F1 score and recall.
 Simply training on the balanced dataset had an even bigger positive effect, even though a considerable amount of training data was dropped. This highlights the importance of data quality:
 <p align="center">
-  <img src="graphics_report/imbalanced_training.JPG" alt="lr effect" style="width: 100%;">
+  <img src="graphics_report/imbalanced_training.JPG" alt="imbalance" style="width: 100%;">
 </p>
 All three models utilize the same setup, only bl_enhanced_2_cw (brown) uses class weights. bl_enhanced_2 (blue) and bl_enhanced_2_cw were trained on the imbalanced dataset, bl_enhanced_2_us (magenta) was trained on the under sampled (balanced) dataset.
 In the validation F1 score, the model trained on the balanced dataset clearly outperforms the other models, followed by the model with weighted classes. The model trained on the imbalanced dataset performs worst in F1.  
@@ -172,7 +172,7 @@ A short video I recorded was classified [here](app/classified.mp4) and the predi
 ### Possible Data Leakage
 The following only concerns models trained on the imbalanced dataset (not the top models):  
 All model's testset evaluation was done on the balanced dataset's test subset. In the preprocessing step, the imbalanced and balanced datasets were independently shuffled before splitting into train, val, and test.
-This was a conceptual mistake, the under sampling step should have been done based on the already split imbalanced dataset.    
+This was a conceptual mistake. The under-sampling step should have been done based on the already split imbalanced dataset.  
 This means there probably is data leaking when evaluating with the balanced test set on a model that was trained on the imbalanced set.  
 This data leakage in final testing only concerns models trained on the imbalanced dataset (no _us suffix). So, this is not really too much of a concern, considering that the models trained on the imbalanced dataset are performing significantly worse than the ones trained on the balanced dataset anyway.
 
@@ -182,7 +182,7 @@ The best performing model (F1=0.80) had half of it's main stages additionally un
 Two more aspects were paramount in creating a working model: Finding the right learning rate and balancing the dataset.
 In the future, performance could be further improved by exploring:
 - Even more unfrozen layers and completely training a model from ground up
-- Use hyper parameter sweeps (e.g. RayTune)
+- Use hyperparameter sweeps (e.g. RayTune)
 - Data augmentation e.g. random cropping, horizontal flipping, and color jittering...
 
 ### Chaining to Face Detection
