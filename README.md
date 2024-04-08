@@ -12,9 +12,8 @@ Within a [dummy app](app/) the [best model](/train/results/colab/rn50_uf34_1_us_
 https://github.com/tesch-ch/lfi_24/assets/134967675/d13abb66-f71b-4afb-9a46-bc3800085961
 
 ## Motivation
-- pytorch
-- neuroscience
-- everyday world
+There are two main motivational aspects. One is wanting to learn more about PyTorch and actually training a model on real world data.  
+The other one is, that in case of a success, the obtained model could be used as a first step in my research in the field of *Neuroscience in the Everyday World*. Here, a subject might be looking at a smiling or non-smiling person, which could be considered a stimulus to the subject. Automatically detecting such stimuli could be a valuable addition to the field.
 
 ## Methodology
 
@@ -178,12 +177,20 @@ This means there probably is data leaking when evaluating with the balanced test
 This data leakage in final testing only concerns models trained on the imbalanced dataset (no _us suffix). So, this is not really too much of a concern, considering that the models trained on the imbalanced dataset are performing significantly worse than the ones trained on the balanced dataset anyway.
 
 ## Conclusion and Future Work
-
-
-- train model from ground up
+The smile detection works reliably and it can catch even subtle smiling. For the transfer learning task to be successful, it was not enough to simply replace the last fully connected layer.
+The best performing model (F1=0.80) had half of it's main stages additionally unfrozen. Yet, this shows the power of transfer learning, as basically half of the ResNet-50 was fixed and used the pretrained ImageNet-1K weights were used.  
+Two more aspects were paramount in creating a working model: Finding the right learning rate and balancing the dataset.
+In the future, performance could be further improved by exploring:
+- Even more unfrozen layers and completely training a model from ground up
 - Use hyper parameter sweeps (e.g. RayTune)
-- Data Augmentation e.g. random cropping, horizontal flipping, and color jittering.
-- with face object detection find faces in dataset and crop...
+- Data augmentation e.g. random cropping, horizontal flipping, and color jittering...
 
-
-
+### Chaining to Face Detection
+The dummy app of this project can be easily extended. The model can be chained to a face detection model such as [YOLOv8-face](https://github.com/akanametov/yolov8-face?tab=readme-ov-file#yolov8-face). Here the easy to use interface of YOLOv8 could be leveraged. The application pipeline would look like this:
+- detect face(s)
+- extract bounding box of a face
+- crop image based on the bounding box coordinates
+  - maybe enlarge and position the crop area, so it has a more selfie like appearance such as in the GENKI and UCF datasets
+  - square crop aspect
+- input into the model obtained in this project
+- get non_smile/smile classification
